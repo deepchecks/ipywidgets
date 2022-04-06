@@ -58,8 +58,8 @@ widget_view_template = u"""<script type="application/vnd.jupyter.widget-view+jso
 {view_spec}
 </script>"""
 
-DEFAULT_EMBED_SCRIPT_URL = u'https://unpkg.com/@jupyter-widgets/html-manager@%s/dist/embed.js'%__html_manager_version__
-DEFAULT_EMBED_REQUIREJS_URL = u'https://unpkg.com/@jupyter-widgets/html-manager@%s/dist/embed-amd.js'%__html_manager_version__
+DEFAULT_EMBED_SCRIPT_URL = 'https://cdn.jsdelivr.net/npm/@jupyter-widgets/html-manager@%s/dist/embed.js'%__html_manager_version__
+DEFAULT_EMBED_REQUIREJS_URL = 'https://cdn.jsdelivr.net/npm/@jupyter-widgets/html-manager@%s/dist/embed-amd.js'%__html_manager_version__
 
 _doc_snippets = {}
 _doc_snippets['views_attribute'] = """
@@ -81,7 +81,7 @@ _doc_snippets['embed_kwargs'] = """
         full description.
     embed_url: string or None
         Allows for overriding the URL used to fetch the widget manager
-        for the embedded code. This defaults (None) to an `unpkg` CDN url.
+        for the embedded code. This defaults (None) to a `jsDelivr` CDN url.
     requirejs: boolean (True)
         Enables the requirejs-based embedding, which allows for custom widgets.
         If True, the embed_url should point to an AMD module.
@@ -247,7 +247,9 @@ def embed_snippet(views,
                   indent=2,
                   embed_url=None,
                   requirejs=True,
-                  cors=True
+                  cors=True,
+                  minimize_json=False,
+                  load_template="empty-template"
                  ):
     """Return a snippet that can be embedded in an HTML file.
 
@@ -263,22 +265,39 @@ def embed_snippet(views,
 
     data = embed_data(views, drop_defaults=drop_defaults, state=state)
 
-    widget_views = u'\n'.join(
-        widget_view_template.format(view_spec=escape_script(json.dumps(view_spec)))
+    if minimize_json:
+        widget_views = u'\n'.join(
+        widget_view_template.format(view_spec=escape_script(json.dumps(view_spec, separators=(',', ':'))))
         for view_spec in data['view_specs']
     )
+    else:
+        widget_views = '\n'.join(
+            widget_view_template.format(view_spec=escape_script(view_spec, indent=indent))
+            for view_spec in data['view_specs']
+        )
 
     if embed_url is None:
         embed_url = DEFAULT_EMBED_REQUIREJS_URL if requirejs else DEFAULT_EMBED_SCRIPT_URL
 
     load = load_requirejs_template if requirejs else load_template
 
+    if load_template != "empty-template":
+        load = load_template
+
     use_cors = ' crossorigin="anonymous"' if cors else ''
-    values = {
-        'load': load.format(embed_url=embed_url, use_cors=use_cors),
-        'json_data': escape_script(json.dumps(data['manager_state'], indent=indent)),
-        'widget_views': widget_views,
-    }
+
+    if minimize_json:
+        values = {
+            'load': load.format(embed_url=embed_url, use_cors=use_cors),
+            'json_data': escape_script(json.dumps(data['manager_state'], separators=(',', ':'))),
+            'widget_views': widget_views,
+        }
+    else:
+        values = {
+            'load': load.format(embed_url=embed_url, use_cors=use_cors),
+            'json_data': escape_script(json.dumps(data['manager_state'], indent=indent)),
+            'widget_views': widget_views,
+        }
 
     return snippet_template.format(**values)
 
