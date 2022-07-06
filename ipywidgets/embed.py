@@ -272,7 +272,7 @@ def embed_snippet(views,
     )
     else:
         widget_views = '\n'.join(
-            widget_view_template.format(view_spec=escape_script(view_spec, indent=indent))
+            widget_view_template.format(view_spec=escape_script(view_spec))
             for view_spec in data['view_specs']
         )
 
@@ -295,7 +295,7 @@ def embed_snippet(views,
     else:
         values = {
             'load': load.format(embed_url=embed_url, use_cors=use_cors),
-            'json_data': escape_script(json.dumps(data['manager_state'], indent=indent)),
+            'json_data': escape_script(json.dumps(data['manager_state'])),
             'widget_views': widget_views,
         }
 
